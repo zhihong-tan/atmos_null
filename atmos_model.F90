@@ -4,6 +4,8 @@ use mpp_mod, only : mpp_npes, mpp_pe
 use mpp_domains_mod, only : domain2d
 use time_manager_mod, only : time_type
 
+implicit none
+private
 
 type land_ice_atmos_boundary_type
 !variables of this type are declared by coupler_main, allocated by flux_exchange_init
@@ -21,6 +23,8 @@ type land_ice_atmos_boundary_type
 !       q_star    = moisture scale
 !       rough_mom = surface roughness (used for momentum
    real, dimension(:,:), pointer :: t =>NULL(), albedo =>NULL(), land_frac =>NULL()
+   real, dimension(:,:), pointer :: albedo_vis_dir =>NULL(), albedo_nir_dir =>NULL()
+   real, dimension(:,:), pointer :: albedo_vis_dif =>NULL(), albedo_nir_dif =>NULL()
    real, dimension(:,:), pointer :: dt_t =>NULL(), dt_q =>NULL()
    real, dimension(:,:), pointer :: u_flux =>NULL(), v_flux =>NULL(), dtaudv =>NULL(), &
                                     u_star =>NULL(), b_star =>NULL(), q_star =>NULL(), &
@@ -49,7 +53,16 @@ type atmos_data_type
                                     u_bot =>NULL(), v_bot =>NULL(), &
                                     p_surf =>NULL(), gust =>NULL(),  &
                                     coszen =>NULL(), flux_sw =>NULL(), &
-                                    flux_lw =>NULL(), lprec =>NULL(), fprec =>NULL()
+                                    flux_lw =>NULL(), lprec =>NULL(), fprec =>NULL(), &
+                                    flux_sw_dir =>NULL(), &
+                                    flux_sw_dif =>NULL(), &
+                                    flux_sw_down_vis_dir =>NULL(), &
+                                    flux_sw_down_vis_dif =>NULL(), &
+                                    flux_sw_down_total_dir =>NULL(), &
+                                    flux_sw_down_total_dif =>NULL(), &
+                                    flux_sw_vis =>NULL(), &
+                                    flux_sw_vis_dir =>NULL(), &
+                                    flux_sw_vis_dif =>NULL()
    type (surf_diff_type)         :: Surf_diff
    type (time_type)              :: Time, Time_step, Time_init
    integer, pointer              :: pelist(:) =>NULL()
@@ -71,7 +84,7 @@ end type ice_atmos_boundary_type
 public atmos_model_init, atmos_model_end, &
      update_atmos_model_down,           &
      update_atmos_model_up,             &
-     atmos_data_type, &
+     atmos_data_type, surf_diff_type,   &
      land_ice_atmos_boundary_type, &
      land_atmos_boundary_type, &
      ice_atmos_boundary_type
@@ -134,18 +147,27 @@ Atmos%axes(2) = diag_axis_init('lat',glat,'degrees_N','Y','latitude',&
      set_name='atmos',domain2 = Atmos%domain)  
 
 allocate(Atmos%t_bot(is:ie,js:je),&
-     Atmos%q_bot(is:ie,js:je), &
-     Atmos%z_bot(is:ie,js:je), &
-     Atmos%p_bot(is:ie,js:je), &
-     Atmos%u_bot(is:ie,js:je), &
-     Atmos%v_bot(is:ie,js:je), &
-     Atmos%p_surf(is:ie,js:je), &
-     Atmos%gust(is:ie,js:je), &
-     Atmos%coszen(is:ie,js:je), &
-     Atmos%flux_sw(is:ie,js:je), &
-     Atmos%flux_lw(is:ie,js:je), &
-     Atmos%lprec(is:ie,js:je), &
-     Atmos%fprec(is:ie,js:je))
+         Atmos%q_bot(is:ie,js:je), &
+         Atmos%z_bot(is:ie,js:je), &
+         Atmos%p_bot(is:ie,js:je), &
+         Atmos%u_bot(is:ie,js:je), &
+         Atmos%v_bot(is:ie,js:je), &
+         Atmos%p_surf(is:ie,js:je), &
+         Atmos%gust(is:ie,js:je), &
+         Atmos%coszen(is:ie,js:je), &
+         Atmos%flux_sw(is:ie,js:je), &
+         Atmos % flux_sw_dir (is:ie,js:je), &
+         Atmos % flux_sw_dif (is:ie,js:je), &
+         Atmos % flux_sw_down_vis_dir (is:ie,js:je), &
+         Atmos % flux_sw_down_vis_dif (is:ie,js:je), &
+         Atmos % flux_sw_down_total_dir (is:ie,js:je), &
+         Atmos % flux_sw_down_total_dif (is:ie,js:je), &
+         Atmos % flux_sw_vis (is:ie,js:je), &
+         Atmos % flux_sw_vis_dir (is:ie,js:je), &
+         Atmos % flux_sw_vis_dif(is:ie,js:je), &
+         Atmos%flux_lw(is:ie,js:je), &
+         Atmos%lprec(is:ie,js:je), &
+         Atmos%fprec(is:ie,js:je))
 
 Atmos%t_bot=273.0
 Atmos%q_bot = 0.0
@@ -158,6 +180,15 @@ Atmos%gust = 0.0
 Atmos%coszen = 0.0
 Atmos%flux_sw = 0.0
 Atmos%flux_lw = 0.0
+Atmos % flux_sw_dir = 0.0
+Atmos % flux_sw_dif = 0.0 
+Atmos % flux_sw_down_vis_dir = 0.0 
+Atmos % flux_sw_down_vis_dif = 0.0 
+Atmos % flux_sw_down_total_dir = 0.0
+Atmos % flux_sw_down_total_dif = 0.0
+Atmos % flux_sw_vis = 0.0 
+Atmos % flux_sw_vis_dir = 0.0 
+Atmos % flux_sw_vis_dif = 0.0
 Atmos%lprec = 0.0
 Atmos%fprec = 0.0
 
