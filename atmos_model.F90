@@ -4,7 +4,8 @@ use mpp_mod, only : mpp_npes, mpp_pe
 use mpp_domains_mod, only : domain2d
 use time_manager_mod, only : time_type
 
-type, public :: land_ice_atmos_boundary_type
+
+type land_ice_atmos_boundary_type
 !variables of this type are declared by coupler_main, allocated by flux_exchange_init
 !quantities going from land+ice to atmos
 !       t         = surface temperature for radiation calculations
@@ -19,48 +20,52 @@ type, public :: land_ice_atmos_boundary_type
 !       b_star    = bouyancy scale
 !       q_star    = moisture scale
 !       rough_mom = surface roughness (used for momentum
-   real, dimension(:,:), pointer :: t, albedo, land_frac
-   real, dimension(:,:), pointer :: dt_t, dt_q
-   real, dimension(:,:), pointer :: u_flux, v_flux, dtaudv, u_star, b_star, q_star, rough_mom
-   real, dimension(:,:,:), pointer :: data !collective field for "named" fields above
+   real, dimension(:,:), pointer :: t =>NULL(), albedo =>NULL(), land_frac =>NULL()
+   real, dimension(:,:), pointer :: dt_t =>NULL(), dt_q =>NULL()
+   real, dimension(:,:), pointer :: u_flux =>NULL(), v_flux =>NULL(), dtaudv =>NULL(), &
+                                    u_star =>NULL(), b_star =>NULL(), q_star =>NULL(), &
+                                    rough_mom =>NULL()
+   real, dimension(:,:,:), pointer :: data =>NULL() !collective field for "named" fields above
    integer :: xtype             !REGRID, REDIST or DIRECT
 end type land_ice_atmos_boundary_type
 
-type, public :: surf_diff_type
-
-   real, pointer, dimension(:,:) :: dtmass,    &
-        dflux_t,   & 
-        dflux_q,   & 
-        delta_t,   &
-        delta_q
-   
+type surf_diff_type
+  real, pointer, dimension(:,:) :: dtmass  =>NULL(),   &
+                                   dflux_t =>NULL(),   & 
+                                   dflux_q =>NULL(),   & 
+                                   delta_t =>NULL(),   &
+                                   delta_q =>NULL(),   &
+                                   delta_u =>NULL(),   &
+                                   delta_v =>NULL()
 end type surf_diff_type
 
-type, public :: atmos_data_type
+type atmos_data_type
    type (domain2d)               :: domain
    integer                       :: axes(4)
-   real, pointer, dimension(:)   :: glon_bnd, glat_bnd,  &
-        lon_bnd,  lat_bnd
-   real, pointer, dimension(:,:) :: t_bot, q_bot, z_bot, p_bot,  &
-        u_bot, v_bot, p_surf, gust,  &
-        coszen, flux_sw, flux_lw,    &
-        lprec, fprec
+   real, pointer, dimension(:)   :: glon_bnd =>NULL(), glat_bnd =>NULL(),  &
+                                    lon_bnd =>NULL(),  lat_bnd =>NULL()
+   real, pointer, dimension(:,:) :: t_bot =>NULL(), q_bot =>NULL(), &
+                                    z_bot =>NULL(), p_bot =>NULL(),  &
+                                    u_bot =>NULL(), v_bot =>NULL(), &
+                                    p_surf =>NULL(), gust =>NULL(),  &
+                                    coszen =>NULL(), flux_sw =>NULL(), &
+                                    flux_lw =>NULL(), lprec =>NULL(), fprec =>NULL()
    type (surf_diff_type)         :: Surf_diff
    type (time_type)              :: Time, Time_step, Time_init
-   integer, pointer              :: pelist(:)
+   integer, pointer              :: pelist(:) =>NULL()
    logical                       :: pe
 end type atmos_data_type
   
 !quantities going from land alone to atmos (none at present)
-type, public :: land_atmos_boundary_type
+type land_atmos_boundary_type
 !   private
-   real, dimension(:,:), pointer :: data
+   real, dimension(:,:), pointer :: data =>NULL()
 end type land_atmos_boundary_type
 
 !quantities going from ice alone to atmos (none at present)
-type, public :: ice_atmos_boundary_type
+type ice_atmos_boundary_type
 !   private
-   real, dimension(:,:), pointer :: data
+   real, dimension(:,:), pointer :: data =>NULL()
 end type ice_atmos_boundary_type
   
 public atmos_model_init, atmos_model_end, &
@@ -97,7 +102,7 @@ integer :: is, ie, js, je
    Atmos % Time_init = Time_init
    Atmos % Time      = Time
    Atmos % Time_step = Time_step
-   
+ 
 call field_size('INPUT/grid_spec','AREA_ATM',siz)
 allocate(Atmos%glon_bnd(siz(1)+1))
 allocate(Atmos%glat_bnd(siz(2)+1))
@@ -160,13 +165,17 @@ allocate(Atmos%Surf_diff%dtmass(is:ie, js:je) , &
          Atmos%Surf_diff%dflux_t(is:ie, js:je) , &
          Atmos%Surf_diff%dflux_q(is:ie, js:je) , &
          Atmos%Surf_diff%delta_t(is:ie, js:je) , &
-         Atmos%Surf_diff%delta_q(is:ie, js:je) )
+         Atmos%Surf_diff%delta_q(is:ie, js:je) , &
+         Atmos%Surf_diff%delta_u(is:ie, js:je) , &
+         Atmos%Surf_diff%delta_v(is:ie, js:je) )
 
 Atmos%Surf_diff%dflux_t = 0.0
 Atmos%Surf_diff%dflux_q = 0.0
 Atmos%Surf_diff%dtmass = 0.0
 Atmos%Surf_diff%delta_t = 0.0
 Atmos%Surf_diff%delta_q = 0.0
+Atmos%Surf_diff%delta_u = 0.0
+Atmos%Surf_diff%delta_v = 0.0
 
 !------ initialize global integral package ------
 
