@@ -26,7 +26,8 @@ type land_ice_atmos_boundary_type
    real, dimension(:,:), pointer :: albedo_vis_dir =>NULL(), albedo_nir_dir =>NULL()
    real, dimension(:,:), pointer :: albedo_vis_dif =>NULL(), albedo_nir_dif =>NULL()
    real, dimension(:,:), pointer :: dt_t =>NULL(), dt_q =>NULL()
-   real, dimension(:,:), pointer :: u_flux =>NULL(), v_flux =>NULL(), dtaudv =>NULL(), &
+   real, dimension(:,:), pointer :: u_flux =>NULL(), v_flux =>NULL(), &
+                                    dtaudu =>NULL(), dtaudv =>NULL(), &
                                     u_star =>NULL(), b_star =>NULL(), q_star =>NULL(), &
                                     rough_mom =>NULL()
    real, dimension(:,:,:), pointer :: data =>NULL() !collective field for "named" fields above
