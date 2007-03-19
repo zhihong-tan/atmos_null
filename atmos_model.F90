@@ -17,6 +17,7 @@ public land_atmos_boundary_type
 public surf_diff_type
 public update_atmos_model_down
 public update_atmos_model_up
+public atm_stock_pe
 
 !<PUBLICTYPE >
 ! This type should be defined in one spot and "used" from there
@@ -120,8 +121,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 13.0 2006/03/28 21:07:10 fms Exp $'
-character(len=128) :: tagname = '$Name: memphis_2006_12 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 14.0 2007/03/15 22:01:09 fms Exp $'
+character(len=128) :: tagname = '$Name: nalanda $'
 
 contains
 
@@ -414,5 +415,14 @@ return
 end subroutine atmos_model_end
 ! </SUBROUTINE>
 
+subroutine atm_stock_pe (Atm, index, value)
+
+type (atmos_data_type), intent(inout) :: Atm
+integer,                intent(in)    :: index
+real,                   intent(out)   :: value
+
+value = 0.0
+
+end subroutine atm_stock_pe
 
 end module atmos_model_mod
