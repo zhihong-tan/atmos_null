@@ -112,8 +112,8 @@ logical :: module_is_initialized = .FALSE.
 
 
 !---- version number -----
-character(len=128) :: version = '$Id: atmos_tracer_driver.F90,v 13.0 2006/03/28 21:07:12 fms Exp $'
-character(len=128) :: tagname = '$Name: nalanda_2007_04 $'
+character(len=128) :: version = '$Id: atmos_tracer_driver.F90,v 13.0.2.2 2007/06/06 17:30:39 wfc Exp $'
+character(len=128) :: tagname = '$Name: nalanda_2007_06 $'
 !-----------------------------------------------------------------------
 
 contains
@@ -194,29 +194,38 @@ contains
 !   <IN NAME="kbot" TYPE="integer, optional" DIM="(:,:)">
 !     Integer array describing which model layer intercepts the surface.
 !   </IN>
- subroutine atmos_tracer_driver (is, ie, js, je, Time, lon, lat, land, phalf, pfull, r,  &
-                           u, v, t, q, u_star, rdt, rm,        &
-                           dt, z_half, z_full, t_surf_rad, albedo, &
-                           Time_next, &
+ subroutine atmos_tracer_driver (is, ie, js, je, Time, lon, lat,  &
+                           area, z_pbl, rough_mom, &
+                           land, phalf, pfull,     &
+                           u, v, t, q, r,          &
+                           rm, rdt, dt,     &
+                           u_star, b_star, q_star, &
+                           z_half, z_full,&
+                           t_surf_rad, albedo, &
+                           Time_next, mask, &
                            kbot)
 
 !-----------------------------------------------------------------------
 integer, intent(in)                           :: is, ie, js, je
 type(time_type), intent(in)                   :: Time
-real, intent(in),    dimension(:,:)           :: lon, lat, u_star
+real, intent(in),    dimension(:,:)           :: lon, lat
+real, intent(in),    dimension(:,:)           :: u_star, b_star, q_star
 real, intent(in),    dimension(:,:)           :: land
-real, intent(in),    dimension(:,:,:)         :: phalf, pfull, u, v, t, q
-real, intent(in),    dimension(:,:,:,:)       :: r
+real, intent(in),    dimension(:,:)           :: area, z_pbl, rough_mom
+real, intent(in),    dimension(:,:,:)         :: phalf, pfull
+real, intent(in),    dimension(:,:,:)         :: u, v, t, q
+real, intent(inout), dimension(:,:,:,:)       :: r
+real, intent(inout), dimension(:,:,:,:)       :: rm
 real, intent(inout), dimension(:,:,:,:)       :: rdt
-real, intent(inout),    dimension(:,:,:,:)       :: rm
 real, intent(in)                              :: dt !timestep(used in chem_interface)
 real, intent(in),    dimension(:,:,:)         :: z_half !height in meters at half levels
 real, intent(in),    dimension(:,:,:)         :: z_full !height in meters at full levels
 real, intent(in),    dimension(:,:)           :: t_surf_rad !surface temperature
 real, intent(in),    dimension(:,:)           :: albedo
-type(time_type), intent(in)                    :: Time_next
+type(time_type), intent(in)                   :: Time_next
 integer, intent(in), dimension(:,:), optional :: kbot
-!-----------------------------------------------------------------------
+real, intent(in), dimension(:,:,:),  optional :: mask
+
 
  return
 
@@ -282,7 +291,7 @@ end subroutine atmos_tracer_flux_init
  subroutine atmos_tracer_driver_init (lonb, latb, r, axes, Time, phalf, mask)
 
 !-----------------------------------------------------------------------
-           real, intent(in),    dimension(:)               :: lonb, latb
+           real, intent(in),    dimension(:,:)             :: lonb, latb
            real, intent(inout), dimension(:,:,:,:)         :: r
 type(time_type), intent(in)                                :: Time
         integer, intent(in)                                :: axes(4)
