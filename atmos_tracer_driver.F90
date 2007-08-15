@@ -112,8 +112,8 @@ logical :: module_is_initialized = .FALSE.
 
 
 !---- version number -----
-character(len=128) :: version = '$Id: atmos_tracer_driver.F90,v 13.0.2.2 2007/06/06 17:30:39 wfc Exp $'
-character(len=128) :: tagname = '$Name: nalanda_2007_06 $'
+character(len=128) :: version = '$Id: atmos_tracer_driver.F90,v 15.0 2007/08/14 03:52:31 fms Exp $'
+character(len=128) :: tagname = '$Name: omsk $'
 !-----------------------------------------------------------------------
 
 contains
