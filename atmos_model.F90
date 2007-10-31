@@ -55,6 +55,7 @@ end type surf_diff_type
      real, pointer, dimension(:,:) :: u_bot    => NULL() ! zonal wind component at lowest model level
      real, pointer, dimension(:,:) :: v_bot    => NULL() ! meridional wind component at lowest model level
      real, pointer, dimension(:,:) :: p_surf   => NULL() ! surface pressure 
+     real, pointer, dimension(:,:) :: slp      => NULL() ! sea level pressure 
      real, pointer, dimension(:,:) :: gust     => NULL() ! gustiness factor
      real, pointer, dimension(:,:) :: coszen   => NULL() ! cosine of the zenith angle
      real, pointer, dimension(:,:) :: flux_sw  => NULL() ! net shortwave flux (W/m2) at the surface
@@ -128,8 +129,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 15.0 2007/08/14 03:52:29 fms Exp $'
-character(len=128) :: tagname = '$Name: omsk $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 15.0.2.1 2007/09/24 14:59:34 pjp Exp $'
+character(len=128) :: tagname = '$Name: omsk_2007_10 $'
 
 contains
 
@@ -380,6 +381,7 @@ allocate ( Atmos%p_bot(is:ie,js:je) )
 allocate ( Atmos%u_bot(is:ie,js:je) )
 allocate ( Atmos%v_bot(is:ie,js:je) )
 allocate ( Atmos%p_surf(is:ie,js:je) )
+allocate ( Atmos%slp(is:ie,js:je) )
 allocate ( Atmos%gust(is:ie,js:je) )
 allocate ( Atmos%coszen(is:ie,js:je) )
 allocate ( Atmos%flux_sw(is:ie,js:je) )
@@ -403,6 +405,7 @@ Atmos%p_bot = 1.e5
 Atmos%u_bot = 0.0
 Atmos%v_bot = 0.0
 Atmos%p_surf = 1.e5
+Atmos%slp = 1.e5
 Atmos%gust = 0.0
 Atmos%coszen = 0.0
 Atmos%flux_sw = 0.0
