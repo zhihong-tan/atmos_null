@@ -130,7 +130,7 @@ end type ice_atmos_boundary_type
 !-----------------------------------------------------------------------
 
 character(len=128) :: version = '$Id: atmos_model.F90,v 15.0.2.1 2007/09/24 14:59:34 pjp Exp $'
-character(len=128) :: tagname = '$Name: omsk_2007_10 $'
+character(len=128) :: tagname = '$Name: omsk_2007_12 $'
 
 contains
 
