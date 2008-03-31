@@ -12,6 +12,7 @@ use diag_manager_mod,  only : diag_axis_init
 use diag_integral_mod, only : diag_integral_init
 use constants_mod,     only : cp_air, hlv
 use mosaic_mod,        only : get_mosaic_ntiles
+use xgrid_mod,         only : grid_box_type
 implicit none
 private
 
@@ -85,6 +86,7 @@ end type surf_diff_type
      integer, pointer              :: pelist(:) =>NULL() ! pelist where atmosphere is running.
      logical                       :: pe                 ! current pe.
      type(coupler_2d_bc_type)      :: fields   ! array of fields used for additional tracers
+     type(grid_box_type)           :: grid
  end type
 !</PUBLICTYPE >
 
@@ -129,8 +131,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 15.0.2.1 2007/09/24 14:59:34 pjp Exp $'
-character(len=128) :: tagname = '$Name: omsk_2007_12 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 15.0.2.1.2.2 2008/02/20 18:23:03 nnz Exp $'
+character(len=128) :: tagname = '$Name: omsk_2008_03 $'
 
 contains
 
@@ -264,7 +266,7 @@ type (atmos_data_type), intent(inout) :: Atmos
 type (time_type), intent(in)          :: Time_init, Time, Time_step
 
 real, dimension(:), allocatable       :: glon, glat, glon_bnd, glat_bnd
-real, dimension(:,:),  allocatable    :: tmpx, tmpy
+real, dimension(:,:),  allocatable    :: tmpx, tmpy, area
 integer, dimension(4)                 :: siz
 integer, dimension(2)                 :: layout
 integer                               :: is, ie, js, je, i, j
@@ -364,6 +366,7 @@ call mpp_get_compute_domain(Atmos%domain,is,ie,js,je)
 
 allocate ( Atmos%lon_bnd(ie-is+2,je-js+2) )
 allocate ( Atmos%lat_bnd(ie-is+2,je-js+2) )
+allocate ( area(ie-is+2,je-js+2) )
 
 Atmos%lon_bnd(:,:) = Atmos%glon_bnd(is:ie+1, js:je+1)
 Atmos%lat_bnd(:,:) = Atmos%glat_bnd(is:ie+1, js:je+1)
@@ -441,8 +444,17 @@ Atmos%Surf_diff%delta_tr = 0.0
 
 !------ initialize global integral package ------
 
-    call diag_integral_init (Time_init, Time,  &
-                             Atmos % lon_bnd(:,1),   Atmos % lat_bnd(1,:) )
+area = 0.0
+!r2 = radius*radius
+!allocate (slat(size(Atmos%lat_bnd(1,:))))
+!slat = sin(blat)
+!do j=1,jdim
+!   do i=1,idim
+!      area(i,j) = r2*(blon(i+1) - blon(i))*(slat(j+1) - slat(j))
+!   end do
+!end do
+
+call diag_integral_init (Time_init, Time, Atmos%lon_bnd, Atmos%lat_bnd, area )
     
 return
 
