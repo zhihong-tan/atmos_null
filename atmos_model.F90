@@ -26,6 +26,7 @@ public surf_diff_type
 public update_atmos_model_down
 public update_atmos_model_up
 public atm_stock_pe
+public atmos_model_restart
 
 !<PUBLICTYPE >
 ! This type should be defined in one spot and "used" from there
@@ -37,6 +38,7 @@ type surf_diff_type
   real, pointer, dimension(:,:)   :: delta_v => NULL()
   real, pointer, dimension(:,:,:) :: dflux_tr => NULL()   ! tracer flux tendency
   real, pointer, dimension(:,:,:) :: delta_tr => NULL()   ! tracer tendency
+  real, pointer, dimension(:,:)     :: sst_miz => NULL()
 end type surf_diff_type
 !</PUBLICTYPE >
 
@@ -131,8 +133,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 16.0 2008/07/30 22:06:10 fms Exp $'
-character(len=128) :: tagname = '$Name: perth $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 16.0.2.1.2.1 2008/09/18 18:17:56 nnz Exp $'
+character(len=128) :: tagname = '$Name: perth_2008_10 $'
 
 contains
 
@@ -490,6 +492,19 @@ return
 
 end subroutine atmos_model_end
 ! </SUBROUTINE>
+
+  !#######################################################################
+  ! <SUBROUTINE NAME="atmos_model_restart">
+  ! <DESCRIPTION>
+  ! dummy routines.
+  ! </DESCRIPTION>
+  subroutine atmos_model_restart(Atmos, timestamp)
+    type (atmos_data_type),   intent(inout) :: Atmos
+    character(len=*),  intent(in)           :: timestamp
+
+
+  end subroutine atmos_model_restart
+  ! </SUBROUTINE>
 
 subroutine atm_stock_pe (Atm, index, value)
 
