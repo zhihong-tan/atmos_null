@@ -4,15 +4,22 @@ use mpp_mod,           only : mpp_npes, mpp_pe, mpp_error, FATAL
 use mpp_domains_mod,   only : domain2d
 use mpp_domains_mod,   only : mpp_define_layout, mpp_define_domains
 use mpp_domains_mod,   only : CYCLIC_GLOBAL_DOMAIN, mpp_get_data_domain
-use mpp_domains_mod,   only : mpp_get_compute_domain
+use mpp_domains_mod,   only : mpp_get_compute_domain, mpp_get_tile_id
+use mpp_domains_mod,   only : mpp_get_current_ntile
 use fms_mod,           only : field_exist, read_data, field_size
 use time_manager_mod,  only : time_type
 use coupler_types_mod, only : coupler_2d_bc_type
 use diag_manager_mod,  only : diag_axis_init
-use diag_integral_mod, only : diag_integral_init
 use constants_mod,     only : cp_air, hlv
 use mosaic_mod,        only : get_mosaic_ntiles
 use xgrid_mod,         only : grid_box_type
+use grid_mod,          only : get_grid_ntiles, define_cube_mosaic
+use grid_mod,          only : get_grid_size, get_grid_cell_vertices
+use grid_mod,          only : get_grid_cell_centers
+use diag_integral_mod, only : diag_integral_init
+use tracer_manager_mod,only : register_tracers
+use field_manager_mod, only : MODEL_LAND
+
 implicit none
 private
 
@@ -47,8 +54,6 @@ end type surf_diff_type
      type (domain2d)               :: domain             ! domain decomposition
      integer                       :: axes(4)            ! axis indices (returned by diag_manager) for the atmospheric grid 
                                                          ! (they correspond to the x, y, pfull, phalf axes)
-     real, pointer, dimension(:,:) :: glon_bnd => NULL() ! global longitude axis grid box boundaries in radians.
-     real, pointer, dimension(:,:) :: glat_bnd => NULL() ! global latitude axis grid box boundaries in radians.
      real, pointer, dimension(:,:) :: lon_bnd  => NULL() ! local longitude axis grid box boundaries in radians.
      real, pointer, dimension(:,:) :: lat_bnd  => NULL() ! local latitude axis grid box boundaries in radians.
      real, pointer, dimension(:,:) :: t_bot    => NULL() ! temperature at lowest model level
@@ -133,8 +138,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 17.0 2009/07/21 02:53:36 fms Exp $'
-character(len=128) :: tagname = '$Name: quebec_200910 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 18.0 2010/03/02 23:28:30 fms Exp $'
+character(len=128) :: tagname = '$Name: riga $'
 
 contains
 
@@ -267,129 +272,88 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step)
 type (atmos_data_type), intent(inout) :: Atmos
 type (time_type), intent(in)          :: Time_init, Time, Time_step
 
-real, dimension(:), allocatable       :: glon, glat, glon_bnd, glat_bnd
-real, dimension(:,:),  allocatable    :: tmpx, tmpy, area
-integer, dimension(4)                 :: siz
+real, dimension(:,:), allocatable     :: glon, glat, glon_bnd, glat_bnd
+integer, dimension(:), allocatable    :: tile_ids
+real, dimension(:,:),  allocatable    :: area
 integer, dimension(2)                 :: layout
-integer                               :: is, ie, js, je, i, j
-integer                               :: nlon, nlat, ntiles
-integer                               :: ntprog
-character(len=128)                    :: grid_file = "INPUT/grid_spec.nc"
-character(len=256)                    :: tile_file
-character(len=256)                    :: atm_mosaic   ! land mosaic file
+integer                               :: is, ie, js, je, i
+integer                               :: nlon, nlat, ntile, tile
+integer                               :: ntracers, ntprog, ndiag
 !---- set the atmospheric model time ------
 
 Atmos % Time_init = Time_init
 Atmos % Time      = Time
 Atmos % Time_step = Time_step
  
+call get_grid_ntiles('ATM',ntile)
+call get_grid_size('ATM',1,nlon,nlat)
 
-if(field_exist(grid_file, 'AREA_ATM') ) then
-   call field_size(grid_file,'AREA_ATM',siz)
-   nlon = siz(1)
-   nlat = siz(2)
-   allocate(Atmos%glon_bnd(nlon+1,nlat+1))
-   allocate(Atmos%glat_bnd(nlon+1,nlat+1))
-   allocate(      glon_bnd(nlon+1))
-   allocate(      glat_bnd(nlat+1))
-   allocate(glon(nlon),glat(nlat))
-   call read_data(grid_file,'xba',glon_bnd, no_domain=.true.)
-   call read_data(grid_file,'yba',glat_bnd, no_domain=.true.)
-   call read_data(grid_file,'xta',glon, no_domain=.true.)
-   call read_data(grid_file,'yta',glat, no_domain=.true.)
-else if( field_exist(grid_file, 'atm_mosaic_file') ) then ! read from mosaic file
-   call read_data(grid_file, "atm_mosaic_file", atm_mosaic)     
-   atm_mosaic = "INPUT/"//trim(atm_mosaic)
-   ntiles = get_mosaic_ntiles(atm_mosaic)
-   if(ntiles .NE. 1) call mpp_error(FATAL, 'land_model_init: ntiles should be 1 for atmos mosaic, contact developer')
-   call read_data(atm_mosaic, "gridfiles", tile_file )
-   tile_file = 'INPUT/'//trim(tile_file)
-   call field_size(tile_file, "x", siz)
-   if( mod(siz(1)-1,2) .NE. 0) call mpp_error(FATAL, "atmos_model_init:size(x,1) - 1 should be divided by 2")
-   if( mod(siz(2)-1,2) .NE. 0) call mpp_error(FATAL, "atmos_model_init:size(x,2) - 1 should be divided by 2")
-   nlon = (siz(1)-1)/2
-   nlat = (siz(2)-1)/2
-   allocate(Atmos%glon_bnd(nlon+1,nlat+1))
-   allocate(Atmos%glat_bnd(nlon+1,nlat+1))
-   allocate( glon_bnd(nlon+1), glat_bnd(nlat+1), glon(nlon), glat(nlat))
-   !--- read the grid information on supergrid.
-   allocate( tmpx(2*nlon+1, 2*nlat+1), tmpy(2*nlon+1, 2*nlat+1) )
-   call read_data(tile_file, "x", tmpx, no_domain=.TRUE.)
-   call read_data(tile_file, "y", tmpy, no_domain=.TRUE.)
-   !--- make sure the grid is regular lat-lon grid.
-   do j = 1, 2*nlat+1
-      do i = 2, 2*nlon+1
-         if(tmpy(i,j) .NE. tmpy(1,j)) call mpp_error(FATAL, "atmos_model_init:longitude is not uniform")
-      end do
-   end do
-   do i = 1, 2*nlon+1
-      do j = 2, 2*nlat+1
-         if(tmpx(i,j) .NE. tmpx(i,1)) call mpp_error(FATAL, "atmos_model_init:latitude is not uniform")
-      end do
-   end do
-
-   do i = 1, nlon+1
-      glon_bnd(i) = tmpx(2*i-1,1)
-   end do
-   do j = 1, nlat+1
-      glat_bnd(j) = tmpy(1, 2*j-1)
-   end do
-   do i = 1, nlon
-      glon(i) = tmpx(2*i,1)
-   end do
-   do j = 1, nlat
-      glat(j) = tmpy(1, 2*j)
-   end do
-   deallocate(tmpx, tmpy)
+if(ntile ==1) then
+   if( ASSOCIATED(Atmos%maskmap) ) then
+      layout(1) = size(Atmos%maskmap,1)
+      layout(2) = size(Atmos%maskmap,2)
+      call mpp_define_domains((/1,nlon,1,nlat/), layout, Atmos%domain, &
+           xflags = CYCLIC_GLOBAL_DOMAIN, xhalo=1, yhalo=1, maskmap = Atmos%maskmap , name='atmos model')
+   else
+      call mpp_define_layout((/1,nlon,1,nlat/), mpp_npes(), layout)
+      call mpp_define_domains((/1,nlon,1,nlat/), layout, Atmos%domain, &
+           xflags = CYCLIC_GLOBAL_DOMAIN, xhalo=1, yhalo=1, name='atmos model')
+   end if
 else
-   call mpp_error(FATAL, 'atmos_model_init: both AREA_ATM and atm_mosaic_file do not exist in file '//trim(grid_file))
-end if
+   if( ASSOCIATED(Atmos%maskmap) ) call mpp_error(FATAL, &
+        'atmos_model_init: Atmos%maskmap should not be associated when ntile is not 1')
+   call mpp_define_layout( (/1,nlon,1,nlat/), mpp_npes()/ntile, layout )
 
-do i = 1, nlon+1
-   Atmos%glon_bnd(i,:) = glon_bnd(i)*atan(1.0)/45.0
-end do
-
-do j = 1, nlat+1
-   Atmos%glat_bnd(:,j) = glat_bnd(j)*atan(1.0)/45.0
-end do
-
-if( ASSOCIATED(Atmos%maskmap) ) then
-   layout(1) = size(Atmos%maskmap,1)
-   layout(2) = size(Atmos%maskmap,2)
-   call mpp_define_domains((/1,nlon,1,nlat/), layout, Atmos%domain, &
-        xflags = CYCLIC_GLOBAL_DOMAIN, maskmap = Atmos%maskmap , name='atmos model')
-else
-   call mpp_define_layout((/1,nlon,1,nlat/), mpp_npes(), layout)
-   call mpp_define_domains((/1,nlon,1,nlat/), layout, Atmos%domain, &
-        xflags = CYCLIC_GLOBAL_DOMAIN, name='atmos model')
-end if
+   call define_cube_mosaic('ATM', Atmos%domain, layout, halo=1)
+endif
 
 call mpp_get_compute_domain(Atmos%domain,is,ie,js,je)
 
+allocate ( glon_bnd(nlon+1,nlat+1))
+allocate ( glat_bnd(nlon+1,nlat+1))
+allocate ( glon(nlon, nlat))
+allocate ( glat(nlon, nlat))
 allocate ( Atmos%lon_bnd(ie-is+2,je-js+2) )
 allocate ( Atmos%lat_bnd(ie-is+2,je-js+2) )
 allocate ( area(ie-is+2,je-js+2) )
 
-Atmos%lon_bnd(:,:) = Atmos%glon_bnd(is:ie+1, js:je+1)
-Atmos%lat_bnd(:,:) = Atmos%glat_bnd(is:ie+1, js:je+1)
+allocate(tile_ids(mpp_get_current_ntile(Atmos%domain)))
+tile_ids = mpp_get_tile_id(Atmos%domain)
+tile = tile_ids(1)
+deallocate(tile_ids)
 
-Atmos%axes(1) = diag_axis_init('lon',glon,'degrees_E','X','longitude',&
-       set_name='atmos',domain2 = Atmos%domain)
+call get_grid_cell_vertices('ATM',tile,glon_bnd,glat_bnd)
+call get_grid_cell_centers ('ATM',tile,glon, glat)
 
-Atmos%axes(2) = diag_axis_init('lat',glat,'degrees_N','Y','latitude',&
-     set_name='atmos',domain2 = Atmos%domain)  
+Atmos % lon_bnd(:,:) = glon_bnd(is:ie+1, js:je+1)*atan(1.0)/45.0
+Atmos % lat_bnd(:,:) = glat_bnd(is:ie+1, js:je+1)*atan(1.0)/45.0
 
-allocate ( Atmos%t_bot(is:ie,js:je) )
-allocate ( Atmos%tr_bot(is:ie,js:je,1) )        ! just one tracer dimension for q?
-allocate ( Atmos%z_bot(is:ie,js:je) )
-allocate ( Atmos%p_bot(is:ie,js:je) )
-allocate ( Atmos%u_bot(is:ie,js:je) )
-allocate ( Atmos%v_bot(is:ie,js:je) )
-allocate ( Atmos%p_surf(is:ie,js:je) )
-allocate ( Atmos%slp(is:ie,js:je) )
-allocate ( Atmos%gust(is:ie,js:je) )
-allocate ( Atmos%coszen(is:ie,js:je) )
-allocate ( Atmos%flux_sw(is:ie,js:je) )
+if(ntile==1) then
+   Atmos%axes(1) = diag_axis_init('lon',glon(:,1),'degrees_E','X','longitude',&
+        set_name='atmos',domain2 = Atmos%domain)
+
+   Atmos%axes(2) = diag_axis_init('lat',glat(1,:),'degrees_N','Y','latitude',&
+        set_name='atmos',domain2 = Atmos%domain)  
+else
+   Atmos%axes(1) = diag_axis_init('lon',(/(real(i),i=1,nlon)/),'degrees_E','X','longitude',&
+        set_name='atmos',domain2 = Atmos%domain)
+
+   Atmos%axes(2) = diag_axis_init('lat',(/(real(i),i=1,nlat)/),'degrees_N','Y','latitude',&
+        set_name='atmos',domain2 = Atmos%domain)  
+endif
+
+call register_tracers(MODEL_LAND, ntracers, ntprog, ndiag)
+allocate ( Atmos % t_bot(is:ie,js:je) )
+allocate ( Atmos % tr_bot(is:ie,js:je,ntprog) )
+allocate ( Atmos % z_bot(is:ie,js:je) )
+allocate ( Atmos % p_bot(is:ie,js:je) )
+allocate ( Atmos % u_bot(is:ie,js:je) )
+allocate ( Atmos % v_bot(is:ie,js:je) )
+allocate ( Atmos % p_surf(is:ie,js:je) )
+allocate ( Atmos % slp(is:ie,js:je) )
+allocate ( Atmos % gust(is:ie,js:je) )
+allocate ( Atmos % coszen(is:ie,js:je) )
+allocate ( Atmos % flux_sw(is:ie,js:je) )
 allocate ( Atmos % flux_sw_dir (is:ie,js:je) )
 allocate ( Atmos % flux_sw_dif (is:ie,js:je) )
 allocate ( Atmos % flux_sw_down_vis_dir (is:ie,js:je) )
@@ -399,22 +363,22 @@ allocate ( Atmos % flux_sw_down_total_dif (is:ie,js:je) )
 allocate ( Atmos % flux_sw_vis (is:ie,js:je) )
 allocate ( Atmos % flux_sw_vis_dir (is:ie,js:je) )
 allocate ( Atmos % flux_sw_vis_dif(is:ie,js:je) )
-allocate ( Atmos%flux_lw(is:ie,js:je) )
-allocate ( Atmos%lprec(is:ie,js:je) )
-allocate ( Atmos%fprec(is:ie,js:je) )
+allocate ( Atmos % flux_lw(is:ie,js:je) )
+allocate ( Atmos % lprec(is:ie,js:je) )
+allocate ( Atmos % fprec(is:ie,js:je) )
 
-Atmos%t_bot=273.0
-Atmos%tr_bot = 0.0
-Atmos%z_bot = 10.0
-Atmos%p_bot = 1.e5
-Atmos%u_bot = 0.0
-Atmos%v_bot = 0.0
-Atmos%p_surf = 1.e5
-Atmos%slp = 1.e5
-Atmos%gust = 0.0
-Atmos%coszen = 0.0
-Atmos%flux_sw = 0.0
-Atmos%flux_lw = 0.0
+Atmos % t_bot=273.0
+Atmos % tr_bot = 0.0
+Atmos % z_bot = 10.0
+Atmos % p_bot = .99e5
+Atmos % u_bot = 0.0
+Atmos % v_bot = 0.0
+Atmos % p_surf = 1.e5
+Atmos % slp = 1.e5
+Atmos % gust = 0.0
+Atmos % coszen = 0.0
+Atmos % flux_sw = 0.0
+Atmos % flux_lw = 0.0
 Atmos % flux_sw_dir = 0.0
 Atmos % flux_sw_dif = 0.0 
 Atmos % flux_sw_down_vis_dir = 0.0 
@@ -424,41 +388,54 @@ Atmos % flux_sw_down_total_dif = 0.0
 Atmos % flux_sw_vis = 0.0 
 Atmos % flux_sw_vis_dir = 0.0 
 Atmos % flux_sw_vis_dif = 0.0
-Atmos%lprec = 0.0
-Atmos%fprec = 0.0
+Atmos % lprec = 0.0
+Atmos % fprec = 0.0
 
-ntprog = 1
-allocate ( Atmos%Surf_diff%dtmass(is:ie, js:je) )
-allocate ( Atmos%Surf_diff%dflux_t(is:ie, js:je) )
-allocate ( Atmos%Surf_diff%delta_t(is:ie, js:je) )
-allocate ( Atmos%Surf_diff%delta_u(is:ie, js:je) )
-allocate ( Atmos%Surf_diff%delta_v(is:ie, js:je) )
-allocate ( Atmos%Surf_diff%dflux_tr(is:ie, js:je, ntprog) )
-allocate ( Atmos%Surf_diff%delta_tr(is:ie, js:je, ntprog) )
+allocate ( Atmos % Surf_diff % dtmass(is:ie, js:je) )
+allocate ( Atmos % Surf_diff % dflux_t(is:ie, js:je) )
+allocate ( Atmos % Surf_diff % delta_t(is:ie, js:je) )
+allocate ( Atmos % Surf_diff % delta_u(is:ie, js:je) )
+allocate ( Atmos % Surf_diff % delta_v(is:ie, js:je) )
+allocate ( Atmos % Surf_diff % dflux_tr(is:ie, js:je, ntprog) )
+allocate ( Atmos % Surf_diff % delta_tr(is:ie, js:je, ntprog) )
 
-Atmos%Surf_diff%dtmass = 0.0
-Atmos%Surf_diff%dflux_t = 0.0
-Atmos%Surf_diff%delta_t = 0.0
-Atmos%Surf_diff%delta_u = 0.0
-Atmos%Surf_diff%delta_v = 0.0
-Atmos%Surf_diff%dflux_tr = 0.0
-Atmos%Surf_diff%delta_tr = 0.0
-
-!------ initialize global integral package ------
+Atmos % Surf_diff % dtmass   = 0.0
+Atmos % Surf_diff % dflux_t  = 0.0
+Atmos % Surf_diff % delta_t  = 0.0
+Atmos % Surf_diff % delta_u  = 0.0
+Atmos % Surf_diff % delta_v  = 0.0
+Atmos % Surf_diff % dflux_tr = 0.0
+Atmos % Surf_diff % delta_tr = 0.0
 
 area = 0.0
-!r2 = radius*radius
-!allocate (slat(size(Atmos%lat_bnd(1,:))))
-!slat = sin(blat)
-!do j=1,jdim
-!   do i=1,idim
-!      area(i,j) = r2*(blon(i+1) - blon(i))*(slat(j+1) - slat(j))
-!   end do
-!end do
 
-call diag_integral_init (Time_init, Time, Atmos%lon_bnd, Atmos%lat_bnd, area )
-    
-return
+allocate ( Atmos % grid % dx    (   is:ie  , js:je+1))
+allocate ( Atmos % grid % dy    (   is:ie+1, js:je  ))
+allocate ( Atmos % grid % area  (   is:ie  , js:je  ))
+allocate ( Atmos % grid % edge_w(            js:je+1))
+allocate ( Atmos % grid % edge_e(            js:je+1))
+allocate ( Atmos % grid % edge_s(   is:ie+1         ))
+allocate ( Atmos % grid % edge_n(   is:ie+1         ))
+allocate ( Atmos % grid % en1   (3, is:ie  , js:je+1))
+allocate ( Atmos % grid % en2   (3, is:ie+1, js:je  ))
+allocate ( Atmos % grid % vlon  (3, is:ie  , js:je  ))
+allocate ( Atmos % grid % vlat  (3, is:ie  , js:je  ))
+     
+Atmos % grid % dx    = 1.0
+Atmos % grid % dy    = 1.0
+Atmos % grid % area  = 1.0
+Atmos % grid % edge_w= 0.0
+Atmos % grid % edge_e= 1.0
+Atmos % grid % edge_s= 0.0
+Atmos % grid % edge_n= 1.0
+Atmos % grid % en1   = 0.0
+Atmos % grid % en2   = 0.0
+Atmos % grid % vlon  = 0.0
+Atmos % grid % vlat  = 0.0
+
+call diag_integral_init (Atmos % Time_init, Atmos % Time,  &
+                         Atmos % lon_bnd(:,:),  &
+                         Atmos % lat_bnd(:,:), area)
 
 end subroutine atmos_model_init
 ! </SUBROUTINE>
