@@ -1,12 +1,12 @@
 module atmos_model_mod
 
-use mpp_mod,           only : mpp_npes, mpp_pe, mpp_error, FATAL
+use mpp_mod,           only : mpp_npes, mpp_pe, mpp_error, FATAL, mpp_chksum
 use mpp_domains_mod,   only : domain2d
 use mpp_domains_mod,   only : mpp_define_layout, mpp_define_domains
 use mpp_domains_mod,   only : CYCLIC_GLOBAL_DOMAIN, mpp_get_data_domain
 use mpp_domains_mod,   only : mpp_get_compute_domain, mpp_get_tile_id
 use mpp_domains_mod,   only : mpp_get_current_ntile
-use fms_mod,           only : field_exist, read_data, field_size
+use fms_mod,           only : field_exist, read_data, field_size, stdout
 use time_manager_mod,  only : time_type
 use coupler_types_mod, only : coupler_2d_bc_type
 use diag_manager_mod,  only : diag_axis_init
@@ -34,6 +34,9 @@ public update_atmos_model_down
 public update_atmos_model_up
 public atm_stock_pe
 public atmos_model_restart
+public atmos_data_type_chksum
+public lnd_ice_atm_bnd_type_chksum, lnd_atm_bnd_type_chksum
+public ice_atm_bnd_type_chksum
 
 !<PUBLICTYPE >
 ! This type should be defined in one spot and "used" from there
@@ -138,8 +141,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 18.0 2010/03/02 23:28:30 fms Exp $'
-character(len=128) :: tagname = '$Name: riga_201006 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 18.0.2.1 2010/08/13 13:24:38 wfc Exp $'
+character(len=128) :: tagname = '$Name: riga_201012 $'
 
 contains
 
@@ -492,5 +495,234 @@ real,                   intent(out)   :: value
 value = 0.0
 
 end subroutine atm_stock_pe
+
+!#######################################################################
+! <SUBROUTINE NAME="atmos_data_type_chksum">
+!
+! <OVERVIEW>
+!  Print checksums of the various fields in the atmos_data_type.
+! </OVERVIEW>
+
+! <DESCRIPTION>
+!  Routine to print checksums of the various fields in the atmos_data_type.
+! </DESCRIPTION>
+
+! <TEMPLATE>
+!   call atmos_data_type_chksum(id, timestep, atm)
+! </TEMPLATE>
+
+! <IN NAME="Atm" TYPE="type(atmos_data_type)">
+!   Derived-type variable that contains fields in the atmos_data_type.
+! </INOUT>
+!
+! <IN NAME="id" TYPE="character">
+!   Label to differentiate where this routine in being called from.
+! </IN>
+!
+! <IN NAME="timestep" TYPE="integer">
+!   An integer to indicate which timestep this routine is being called for.
+! </IN>
+!
+subroutine atmos_data_type_chksum(id, timestep, atm)
+type(atmos_data_type), intent(in) :: atm 
+    character(len=*), intent(in) :: id
+    integer         , intent(in) :: timestep
+    integer :: n, outunit
+
+100 FORMAT("CHECKSUM::",A32," = ",Z20)
+101 FORMAT("CHECKSUM::",A16,a,'%',a," = ",Z20)
+
+  outunit = stdout()
+  write(outunit,*) 'BEGIN CHECKSUM(Atmos_data_type):: ', id, timestep
+  write(outunit,100) ' atm%lon_bnd                ', mpp_chksum(atm%lon_bnd               )
+  write(outunit,100) ' atm%lat_bnd                ', mpp_chksum(atm%lat_bnd               )
+  write(outunit,100) ' atm%t_bot                  ', mpp_chksum(atm%t_bot                 )
+  do n = 1, size(atm%tr_bot,3)
+  write(outunit,100) ' atm%tr_bot(:,:,n)          ', mpp_chksum(atm%tr_bot(:,:,n)         )
+  enddo
+  write(outunit,100) ' atm%z_bot                  ', mpp_chksum(atm%z_bot                 )
+  write(outunit,100) ' atm%p_bot                  ', mpp_chksum(atm%p_bot                 )
+  write(outunit,100) ' atm%u_bot                  ', mpp_chksum(atm%u_bot                 )
+  write(outunit,100) ' atm%v_bot                  ', mpp_chksum(atm%v_bot                 )
+  write(outunit,100) ' atm%p_surf                 ', mpp_chksum(atm%p_surf                )
+  write(outunit,100) ' atm%slp                    ', mpp_chksum(atm%slp                   )
+  write(outunit,100) ' atm%gust                   ', mpp_chksum(atm%gust                  )
+  write(outunit,100) ' atm%coszen                 ', mpp_chksum(atm%coszen                )
+  write(outunit,100) ' atm%flux_sw                ', mpp_chksum(atm%flux_sw               )
+  write(outunit,100) ' atm%flux_sw_dir            ', mpp_chksum(atm%flux_sw_dir           )
+  write(outunit,100) ' atm%flux_sw_dif            ', mpp_chksum(atm%flux_sw_dif           )
+  write(outunit,100) ' atm%flux_sw_down_vis_dir   ', mpp_chksum(atm%flux_sw_down_vis_dir  )
+  write(outunit,100) ' atm%flux_sw_down_vis_dif   ', mpp_chksum(atm%flux_sw_down_vis_dif  )
+  write(outunit,100) ' atm%flux_sw_down_total_dir ', mpp_chksum(atm%flux_sw_down_total_dir)
+  write(outunit,100) ' atm%flux_sw_down_total_dif ', mpp_chksum(atm%flux_sw_down_total_dif)
+  write(outunit,100) ' atm%flux_sw_vis            ', mpp_chksum(atm%flux_sw_vis           )
+  write(outunit,100) ' atm%flux_sw_vis_dir        ', mpp_chksum(atm%flux_sw_vis_dir       )
+  write(outunit,100) ' atm%flux_sw_vis_dif        ', mpp_chksum(atm%flux_sw_vis_dif       )
+  write(outunit,100) ' atm%flux_lw                ', mpp_chksum(atm%flux_lw               )
+  write(outunit,100) ' atm%lprec                  ', mpp_chksum(atm%lprec                 )
+  write(outunit,100) ' atm%fprec                  ', mpp_chksum(atm%fprec                 )
+!  call surf_diff_type_chksum(id, timestep, atm%surf_diff)
+
+end subroutine atmos_data_type_chksum
+
+! </SUBROUTINE>
+
+!#######################################################################
+! <SUBROUTINE NAME="lnd_ice_atm_bnd_type_chksum">
+!
+! <OVERVIEW>
+!  Print checksums of the various fields in the land_ice_atmos_boundary_type.
+! </OVERVIEW>
+
+! <DESCRIPTION>
+!  Routine to print checksums of the various fields in the land_ice_atmos_boundary_type.
+! </DESCRIPTION>
+
+! <TEMPLATE>
+!   call atmos_data_type_chksum(id, timestep, bnd_type)
+! </TEMPLATE>
+
+! <IN NAME="bnd_type" TYPE="type(land_ice_atmos_boundary_type)">
+!   Derived-type variable that contains fields in the land_ice_atmos_boundary_type.
+! </INOUT>
+!
+! <IN NAME="id" TYPE="character">
+!   Label to differentiate where this routine in being called from.
+! </IN>
+!
+! <IN NAME="timestep" TYPE="integer">
+!   An integer to indicate which timestep this routine is being called for.
+! </IN>
+!
+
+
+subroutine lnd_ice_atm_bnd_type_chksum(id, timestep, bnd_type)
+
+    character(len=*), intent(in) :: id
+    integer         , intent(in) :: timestep
+    type(land_ice_atmos_boundary_type), intent(in) :: bnd_type
+ integer ::   n, outunit
+
+    outunit = stdout()
+    write(outunit,*) 'BEGIN CHECKSUM(lnd_ice_Atm_bnd_type):: ', id, timestep
+100 FORMAT("CHECKSUM::",A32," = ",Z20)
+    write(outunit,100) 'lnd_ice_atm_bnd_type%t             ',mpp_chksum(bnd_type%t              )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%albedo        ',mpp_chksum(bnd_type%albedo         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%albedo_vis_dir',mpp_chksum(bnd_type%albedo_vis_dir )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%albedo_nir_dir',mpp_chksum(bnd_type%albedo_nir_dir )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%albedo_vis_dif',mpp_chksum(bnd_type%albedo_vis_dif )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%albedo_nir_dif',mpp_chksum(bnd_type%albedo_nir_dif )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%land_frac     ',mpp_chksum(bnd_type%land_frac      )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%dt_t          ',mpp_chksum(bnd_type%dt_t           )
+    do n = 1, size(bnd_type%dt_tr,3)
+    write(outunit,100) 'lnd_ice_atm_bnd_type%dt_tr(:,:,n)  ',mpp_chksum(bnd_type%dt_tr(:,:,n)   )
+    enddo
+    write(outunit,100) 'lnd_ice_atm_bnd_type%u_flux        ',mpp_chksum(bnd_type%u_flux         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%v_flux        ',mpp_chksum(bnd_type%v_flux         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%dtaudu        ',mpp_chksum(bnd_type%dtaudu         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%dtaudv        ',mpp_chksum(bnd_type%dtaudv         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%u_star        ',mpp_chksum(bnd_type%u_star         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%b_star        ',mpp_chksum(bnd_type%b_star         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%q_star        ',mpp_chksum(bnd_type%q_star         )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%rough_mom     ',mpp_chksum(bnd_type%rough_mom      )
+!    write(outunit,100) 'lnd_ice_atm_bnd_type%data          ',mpp_chksum(bnd_type%data           )
+
+end subroutine lnd_ice_atm_bnd_type_chksum
+! </SUBROUTINE>
+
+!#######################################################################
+! <SUBROUTINE NAME="lnd_atm_bnd_type_chksum">
+!
+! <OVERVIEW>
+!  Print checksums of the various fields in the land_atmos_boundary_type.
+! </OVERVIEW>
+
+! <DESCRIPTION>
+!  Routine to print checksums of the various fields in the land_atmos_boundary_type.
+! </DESCRIPTION>
+
+! <TEMPLATE>
+!   call lnd_atm_bnd_type_chksum(id, timestep, bnd_type)
+! </TEMPLATE>
+
+! <IN NAME="bnd_type" TYPE="type(land_atmos_boundary_type)">
+!   Derived-type variable that contains fields in the land_atmos_boundary_type.
+! </INOUT>
+!
+! <IN NAME="id" TYPE="character">
+!   Label to differentiate where this routine in being called from.
+! </IN>
+!
+! <IN NAME="timestep" TYPE="integer">
+!   An integer to indicate which timestep this routine is being called for.
+! </IN>
+!
+
+
+subroutine lnd_atm_bnd_type_chksum(id, timestep, bnd_type)
+  use fms_mod,                 only: stdout
+  use mpp_mod,                 only: mpp_chksum
+
+    character(len=*), intent(in) :: id
+    integer         , intent(in) :: timestep
+    type(land_atmos_boundary_type), intent(in) :: bnd_type
+ integer ::   n, outunit
+
+    outunit = stdout()
+    write(outunit,*) 'BEGIN CHECKSUM(lnd_atmos_boundary_type):: ', id, timestep
+!    write(outunit,100) 'lnd_atm_bnd_type%data',mpp_chksum(bnd_type%data)
+
+100 FORMAT("CHECKSUM::",A32," = ",Z20)
+
+end subroutine lnd_atm_bnd_type_chksum
+! </SUBROUTINE>
+
+!#######################################################################
+! <SUBROUTINE NAME="ice_atm_bnd_type_chksum">
+!
+! <OVERVIEW>
+!  Print checksums of the various fields in the ice_atmos_boundary_type.
+! </OVERVIEW>
+
+! <DESCRIPTION>
+!  Routine to print checksums of the various fields in the ice_atmos_boundary_type.
+! </DESCRIPTION>
+
+! <TEMPLATE>
+!   call ice_atm_bnd_type_chksum(id, timestep, bnd_type)
+! </TEMPLATE>
+
+! <IN NAME="bnd_type" TYPE="type(ice_atmos_boundary_type)">
+!   Derived-type variable that contains fields in the ice_atmos_boundary_type.
+! </INOUT>
+!
+! <IN NAME="id" TYPE="character">
+!   Label to differentiate where this routine in being called from.
+! </IN>
+!
+! <IN NAME="timestep" TYPE="integer">
+!   An integer to indicate which timestep this routine is being called for.
+! </IN>
+!
+
+
+subroutine ice_atm_bnd_type_chksum(id, timestep, bnd_type)
+  use fms_mod,                 only: stdout
+  use mpp_mod,                 only: mpp_chksum
+
+    character(len=*), intent(in) :: id
+    integer         , intent(in) :: timestep
+    type(ice_atmos_boundary_type), intent(in) :: bnd_type
+ integer ::   n, outunit
+
+    outunit = stdout()
+    write(outunit,*) 'BEGIN CHECKSUM(ice_atmos_boundary_type):: ', id, timestep
+!    write(outunit,100) 'ice_atm_bnd_type%data',mpp_chksum(data_type%data)
+
+100 FORMAT("CHECKSUM::",A32," = ",Z20)
+
+
+end subroutine ice_atm_bnd_type_chksum
+! </SUBROUTINE>
 
 end module atmos_model_mod
