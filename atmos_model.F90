@@ -122,6 +122,7 @@ type land_ice_atmos_boundary_type
    real, dimension(:,:),   pointer :: q_star         =>NULL() ! moisture scale
    real, dimension(:,:),   pointer :: rough_mom      =>NULL() ! surface roughness (used for momentum)
    real, dimension(:,:,:), pointer :: data =>NULL() !collective field for "named" fields above
+   real, dimension(:,:),   pointer :: frac_open_sea  =>null() ! non-seaice fraction (%)
    integer :: xtype             !REGRID, REDIST or DIRECT
 end type land_ice_atmos_boundary_type
 !</PUBLICTYPE >
@@ -141,8 +142,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 18.0.2.1 2010/08/13 13:24:38 wfc Exp $'
-character(len=128) :: tagname = '$Name: riga_201104 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 19.0 2012/01/06 20:01:29 fms Exp $'
+character(len=128) :: tagname = '$Name: siena $'
 
 contains
 
