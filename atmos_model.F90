@@ -1,12 +1,55 @@
 module atmos_model_mod
 
+!
+!<CONTACT EMAIL="Zhi.Liang@noaa.gov"> Zhi Liang
+!</CONTACT>
+!
+!<OVERVIEW>
+! Null atmosphere model. 
+!</OVERVIEW>
+!<DESCRIPTION>
+! Null atmosphere model. 
+!</DESCRIPTION>
+!
+!<NAMELIST NAME="atmos_model_nml">
+!  <DATA NAME="layout" TYPE="integer">
+!  Processor domain layout for atmos model. 
+!  </DATA> 
+!  <DATA NAME="mask_table" TYPE="character">
+!   A text file to specify n_mask, layout and mask_list to reduce number of processor
+!   usage by masking out some domain regions which contain all land points. 
+!   The default file name of mask_table is "INPUT/atmos_mask_table". Please note that 
+!   the file name must begin with "INPUT/". The first 
+!   line of mask_table will be number of region to be masked out. The second line 
+!   of the mask_table will be the layout of the model. User need to set atmos_model_nml
+!   variable layout to be the same as the second line of the mask table.
+!   The following n_mask line will be the position of the processor to be masked out.
+!   The mask_table could be created by tools check_mask. 
+!   For example the mask_table will be as following if n_mask=2, layout=4,6 and 
+!   the processor (1,2) and (3,6) will be masked out. 
+!     2
+!     4,6
+!     1,2
+!     3,6
+!  </DATA>
+!
+
+!</NAMELIST>
+
+
+
+
 use mpp_mod,           only : mpp_npes, mpp_pe, mpp_error, FATAL, mpp_chksum
+use mpp_mod,           only : input_nml_file
+
 use mpp_domains_mod,   only : domain2d
 use mpp_domains_mod,   only : mpp_define_layout, mpp_define_domains
 use mpp_domains_mod,   only : CYCLIC_GLOBAL_DOMAIN, mpp_get_data_domain
 use mpp_domains_mod,   only : mpp_get_compute_domain, mpp_get_tile_id
 use mpp_domains_mod,   only : mpp_get_current_ntile
 use fms_mod,           only : field_exist, read_data, field_size, stdout
+use fms_mod,           only : open_namelist_file, check_nml_error, file_exist, close_file
+use fms_io_mod,        only : parse_mask_table
 use time_manager_mod,  only : time_type
 use coupler_types_mod, only : coupler_2d_bc_type
 use diag_manager_mod,  only : diag_axis_init
@@ -142,8 +185,16 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 19.0 2012/01/06 20:01:29 fms Exp $'
-character(len=128) :: tagname = '$Name: siena_201204 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 18.0.2.1.4.1.2.2.4.1 2012/05/31 15:56:39 Niki.Zadeh Exp $'
+character(len=128) :: tagname = '$Name: siena_201207 $'
+
+!---- atmos_model_nml
+integer :: layout(2)
+! mask_table contains information for masking domain ( n_mask, layout and mask_list).
+character(len=128) :: mask_table = "INPUT/atmos_mask_table"
+
+namelist /atmos_model_nml/ layout, mask_table
+
 
 contains
 
@@ -279,10 +330,25 @@ type (time_type), intent(in)          :: Time_init, Time, Time_step
 real, dimension(:,:), allocatable     :: glon, glat, glon_bnd, glat_bnd
 integer, dimension(:), allocatable    :: tile_ids
 real, dimension(:,:),  allocatable    :: area
-integer, dimension(2)                 :: layout
 integer                               :: is, ie, js, je, i
 integer                               :: nlon, nlat, ntile, tile
 integer                               :: ntracers, ntprog, ndiag
+integer                               :: namelist_unit, io, ierr, stdoutunit
+
+!--- read namelist
+#ifdef INTERNAL_FILE_NML
+      read (input_nml_file, atmos_model_nml, iostat=io)
+#else
+   namelist_unit = open_namelist_file()
+   ierr=1
+   do while (ierr /= 0)
+     read(namelist_unit, nml=atmos_model_nml, iostat=io, end=20)
+     ierr = check_nml_error (io, 'atmos_model_nml')
+   enddo
+   20 call close_file (namelist_unit)
+#endif
+
+stdoutunit = stdout()
 !---- set the atmospheric model time ------
 
 Atmos % Time_init = Time_init
@@ -292,22 +358,32 @@ Atmos % Time_step = Time_step
 call get_grid_ntiles('ATM',ntile)
 call get_grid_size('ATM',1,nlon,nlat)
 
+
+if(file_exist(mask_table)) then
+   if(ntile > 1) then
+      call mpp_error(FATAL, &
+        'atmos_model_init: file '//trim(mask_table)//' should not exist when ntile is not 1')
+   endif
+   if(layout(1) == 0 .OR. layout(2) == 0 ) call mpp_error(FATAL, &
+        'atmos_model_init: atmos_model_nml layout should be set when file '//trim(mask_table)//' exists')
+
+   write(stdoutunit, '(a)') '==> NOTE from atmos_model_init:  reading maskmap information from '//trim(mask_table)
+   allocate(Atmos%maskmap(layout(1), layout(2)))
+   call parse_mask_table(mask_table, Atmos%maskmap, "Atmos model")
+else
+   if(layout(1)*layout(2) .NE. mpp_npes()/ntile) call mpp_define_layout((/1,nlon,1,nlat/), mpp_npes()/ntile, layout)
+endif
+
+
 if(ntile ==1) then
    if( ASSOCIATED(Atmos%maskmap) ) then
-      layout(1) = size(Atmos%maskmap,1)
-      layout(2) = size(Atmos%maskmap,2)
       call mpp_define_domains((/1,nlon,1,nlat/), layout, Atmos%domain, &
            xflags = CYCLIC_GLOBAL_DOMAIN, xhalo=1, yhalo=1, maskmap = Atmos%maskmap , name='atmos model')
    else
-      call mpp_define_layout((/1,nlon,1,nlat/), mpp_npes(), layout)
       call mpp_define_domains((/1,nlon,1,nlat/), layout, Atmos%domain, &
            xflags = CYCLIC_GLOBAL_DOMAIN, xhalo=1, yhalo=1, name='atmos model')
    end if
 else
-   if( ASSOCIATED(Atmos%maskmap) ) call mpp_error(FATAL, &
-        'atmos_model_init: Atmos%maskmap should not be associated when ntile is not 1')
-   call mpp_define_layout( (/1,nlon,1,nlat/), mpp_npes()/ntile, layout )
-
    call define_cube_mosaic('ATM', Atmos%domain, layout, halo=1)
 endif
 
