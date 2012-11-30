@@ -1,7 +1,7 @@
 module atmos_model_mod
 
 !
-!<CONTACT EMAIL="Zhi.Liang@noaa.gov"> Zhi Liang
+!<CONTACT EMAIL="GFDL.Climate.Model.Info@noaa.gov"> Zhi Liang
 !</CONTACT>
 !
 !<OVERVIEW>
@@ -185,8 +185,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 18.0.2.1.4.1.2.2.4.1 2012/05/31 15:56:39 Niki.Zadeh Exp $'
-character(len=128) :: tagname = '$Name: siena_201207 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 18.0.2.1.4.1.2.2.4.1.2.1 2012/09/06 18:01:55 nnz Exp $'
+character(len=128) :: tagname = '$Name: siena_201211 $'
 
 !---- atmos_model_nml
 integer :: layout(2)
@@ -395,7 +395,7 @@ allocate ( glon(nlon, nlat))
 allocate ( glat(nlon, nlat))
 allocate ( Atmos%lon_bnd(ie-is+2,je-js+2) )
 allocate ( Atmos%lat_bnd(ie-is+2,je-js+2) )
-allocate ( area(ie-is+2,je-js+2) )
+allocate ( area(ie-is+1,je-js+1) )
 
 allocate(tile_ids(mpp_get_current_ntile(Atmos%domain)))
 tile_ids = mpp_get_tile_id(Atmos%domain)
