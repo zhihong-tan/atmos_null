@@ -186,7 +186,7 @@ end type ice_atmos_boundary_type
 !-----------------------------------------------------------------------
 
 character(len=128) :: version = '$Id: atmos_model.F90,v 18.0.2.1.4.1.2.2.4.1.2.1 2012/09/06 18:01:55 nnz Exp $'
-character(len=128) :: tagname = '$Name: siena_201211 $'
+character(len=128) :: tagname = '$Name: siena_201303 $'
 
 !---- atmos_model_nml
 integer :: layout(2)
