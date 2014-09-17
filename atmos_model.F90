@@ -148,6 +148,8 @@ type land_ice_atmos_boundary_type
    ! variables of this type are declared by coupler_main, allocated by flux_exchange_init.
 !quantities going from land+ice to atmos
    real, dimension(:,:),   pointer :: t              =>NULL() ! surface temperature for radiation calculations
+   real, dimension(:,:),   pointer :: t_ref          =>null() ! surface air temperature (cjg: PBL depth mods)
+   real, dimension(:,:),   pointer :: q_ref          =>null() ! surface air specific humidity (cjg: PBL depth mods)
    real, dimension(:,:),   pointer :: albedo         =>NULL() ! surface albedo for radiation calculations
    real, dimension(:,:),   pointer :: albedo_vis_dir =>NULL()
    real, dimension(:,:),   pointer :: albedo_nir_dir =>NULL()
@@ -185,8 +187,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 20.0 2013/12/13 23:08:53 fms Exp $'
-character(len=128) :: tagname = '$Name: tikal_201403 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 20.0.2.1 2014/04/21 22:08:02 Niki.Zadeh Exp $'
+character(len=128) :: tagname = '$Name: tikal_201409 $'
 
 !---- atmos_model_nml
 integer :: layout(2)
