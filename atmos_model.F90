@@ -80,6 +80,8 @@ public atmos_model_restart
 public atmos_data_type_chksum
 public lnd_ice_atm_bnd_type_chksum, lnd_atm_bnd_type_chksum
 public ice_atm_bnd_type_chksum
+public update_atmos_model_dynamics, update_atmos_model_radiation, update_atmos_model_state
+
 
 !<PUBLICTYPE >
 ! This type should be defined in one spot and "used" from there
@@ -187,8 +189,8 @@ end type ice_atmos_boundary_type
   
 !-----------------------------------------------------------------------
 
-character(len=128) :: version = '$Id: atmos_model.F90,v 20.0.2.1 2014/04/21 22:08:02 Niki.Zadeh Exp $'
-character(len=128) :: tagname = '$Name: tikal_201409 $'
+character(len=128) :: version = '$Id: atmos_model.F90,v 21.0 2014/12/15 21:39:41 fms Exp $'
+character(len=128) :: tagname = '$Name: ulm $'
 
 !---- atmos_model_nml
 integer :: layout(2)
@@ -292,6 +294,23 @@ subroutine update_atmos_model_up( Surface_boundary, Atmos )
 end subroutine update_atmos_model_up
 ! </SUBROUTINE>
 
+subroutine update_atmos_model_radiation( Surface_boundary, Atmos )
+   type(land_ice_atmos_boundary_type), intent(in) :: Surface_boundary
+   type (atmos_data_type), intent(in) :: Atmos
+   return
+end subroutine update_atmos_model_radiation
+
+subroutine update_atmos_model_state( Atmos )
+   type (atmos_data_type), intent(in) :: Atmos
+   return
+end subroutine update_atmos_model_state
+
+
+subroutine update_atmos_model_dynamics( Atmos )
+   type (atmos_data_type), intent(in) :: Atmos
+   return
+end subroutine update_atmos_model_dynamics
+
 !#######################################################################
 ! <SUBROUTINE NAME="atmos_model_init">
 !
@@ -324,10 +343,11 @@ end subroutine update_atmos_model_up
 !   Derived-type variable that contains fields needed by the flux exchange module.
 ! </INOUT>
 
-subroutine atmos_model_init (Atmos, Time_init, Time, Time_step)
+subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, do_concurrent_radiation)
 
 type (atmos_data_type), intent(inout) :: Atmos
 type (time_type), intent(in)          :: Time_init, Time, Time_step
+logical, intent(in)                   :: do_concurrent_radiation
 
 real, dimension(:,:), allocatable     :: glon, glat, glon_bnd, glat_bnd
 integer, dimension(:), allocatable    :: tile_ids
