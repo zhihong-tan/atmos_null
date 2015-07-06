@@ -190,7 +190,7 @@ end type ice_atmos_boundary_type
 !-----------------------------------------------------------------------
 
 character(len=128) :: version = '$Id: atmos_model.F90,v 20.0.2.1.2.1 2014/09/25 15:39:04 Niki.Zadeh Exp $'
-character(len=128) :: tagname = '$Name: ulm_201505 $'
+character(len=128) :: tagname = '$Name: testing $'
 
 !---- atmos_model_nml
 integer :: layout(2)
