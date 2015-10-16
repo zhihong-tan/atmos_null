@@ -47,7 +47,7 @@ use mpp_domains_mod,   only : mpp_define_layout, mpp_define_domains
 use mpp_domains_mod,   only : CYCLIC_GLOBAL_DOMAIN, mpp_get_data_domain
 use mpp_domains_mod,   only : mpp_get_compute_domain, mpp_get_tile_id
 use mpp_domains_mod,   only : mpp_get_current_ntile
-use fms_mod,           only : field_exist, read_data, field_size, stdout
+use fms_mod,           only : field_exist, read_data, field_size, stdout, set_domain
 use fms_mod,           only : open_namelist_file, check_nml_error, file_exist, close_file
 use fms_io_mod,        only : parse_mask_table
 use time_manager_mod,  only : time_type
@@ -538,6 +538,8 @@ Atmos % grid % vlat  = 0.0
 call diag_integral_init (Atmos % Time_init, Atmos % Time,  &
                          Atmos % lon_bnd(:,:),  &
                          Atmos % lat_bnd(:,:), area)
+
+call set_domain(Atmos%domain)
 
 end subroutine atmos_model_init
 ! </SUBROUTINE>
