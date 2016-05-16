@@ -167,6 +167,8 @@ type land_ice_atmos_boundary_type
    real, dimension(:,:),   pointer :: u_star         =>NULL() ! friction velocity
    real, dimension(:,:),   pointer :: b_star         =>NULL() ! bouyancy scale
    real, dimension(:,:),   pointer :: q_star         =>NULL() ! moisture scale
+   real, dimension(:,:),   pointer :: shflx          =>null() ! sensible heat flux
+   real, dimension(:,:),   pointer :: lhflx          =>null() ! latent heat flux
    real, dimension(:,:),   pointer :: rough_mom      =>NULL() ! surface roughness (used for momentum)
    real, dimension(:,:,:), pointer :: data =>NULL() !collective field for "named" fields above
    real, dimension(:,:),   pointer :: frac_open_sea  =>null() ! non-seaice fraction (%)

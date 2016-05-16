@@ -93,6 +93,7 @@ private
 public  atmos_tracer_driver, atmos_tracer_flux_init
 public  atmos_tracer_driver_init, atmos_tracer_driver_end
 public  atmos_tracer_driver_gather_data
+public  atmos_tracer_has_surf_setl_flux, get_atmos_tracer_surf_setl_flux
 
 !-----------------------------------------------------------------------
 !----------- namelist -------------------
@@ -366,6 +367,24 @@ real, dimension(:,:,:), intent(in)      :: tr_bot
  end subroutine atmos_tracer_driver_gather_data
 ! </SUBROUTINE>
 
+!######################################################################
+function atmos_tracer_has_surf_setl_flux(tr) result(ret)
+   logical :: ret
+   integer, intent(in) :: tr ! tracer index
+
+   ret=.FALSE.
+
+end function
+
+!######################################################################
+subroutine get_atmos_tracer_surf_setl_flux(tr, setl_flux, dsetl_dtr)
+  integer, intent(in)  :: tr
+  real,    intent(out) :: setl_flux(:,:)
+  real,    intent(out) :: dsetl_dtr(:,:)
+
+  setl_flux(:,:) = 0.0 ; dsetl_dtr(:,:) = 0.0
+
+end subroutine
 !######################################################################
 
 end module atmos_tracer_driver_mod
