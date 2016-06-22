@@ -93,6 +93,7 @@ private
 public  atmos_tracer_driver, atmos_tracer_flux_init
 public  atmos_tracer_driver_init, atmos_tracer_driver_end
 public  atmos_tracer_driver_gather_data
+public  atmos_tracer_has_surf_setl_flux, get_atmos_tracer_surf_setl_flux
 
 !-----------------------------------------------------------------------
 !----------- namelist -------------------
@@ -112,8 +113,8 @@ logical :: module_is_initialized = .FALSE.
 
 
 !---- version number -----
-character(len=128) :: version = '$Id: atmos_tracer_driver.F90,v 15.0 2007/08/14 03:52:31 fms Exp $'
-character(len=128) :: tagname = '$Name: ulm_201505 $'
+character(len=128) :: version = '$Id$'
+character(len=128) :: tagname = '$Name$'
 !-----------------------------------------------------------------------
 
 contains
@@ -367,5 +368,28 @@ real, dimension(:,:,:), intent(in)      :: tr_bot
 ! </SUBROUTINE>
 
 !######################################################################
+! given a tracer index, returns true if this tracer has non-zero
+! sedimentation flux at the bottom of the atmosphere
+function atmos_tracer_has_surf_setl_flux(tr) result(ret)
+   logical :: ret
+   integer, intent(in) :: tr ! tracer index
+
+   ret=.FALSE.
+end function
+
+!######################################################################
+! given a tracer index, returns sedimentation flux at the bottom of
+! the atmosphere for this tracer
+subroutine get_atmos_tracer_surf_setl_flux(tr, setl_flux, dsetl_dtr)
+  integer, intent(in)  :: tr         ! tracer index
+  real,    intent(out) :: setl_flux(:,:) ! sedimentation flux at the bottom of the atmosphere
+  real,    intent(out) :: dsetl_dtr(:,:) ! derivative of sedimentation flux w.r.t.
+       ! the tracer concentration in the bottom layer
+
+  setl_flux(:,:) = 0.0 ; dsetl_dtr(:,:) = 0.0
+  return
+end subroutine
+!######################################################################
+
 
 end module atmos_tracer_driver_mod
