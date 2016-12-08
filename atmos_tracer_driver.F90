@@ -93,6 +93,7 @@ private
 public  atmos_tracer_driver, atmos_tracer_flux_init
 public  atmos_tracer_driver_init, atmos_tracer_driver_end
 public  atmos_tracer_driver_gather_data
+public  atmos_tracer_driver_gather_data_down
 public  atmos_tracer_has_surf_setl_flux, get_atmos_tracer_surf_setl_flux
 
 !-----------------------------------------------------------------------
@@ -365,8 +366,19 @@ real, dimension(:,:,:), intent(in)      :: tr_bot
  return
 
  end subroutine atmos_tracer_driver_gather_data
-! </SUBROUTINE>
 
+!######################################################################
+ subroutine atmos_tracer_driver_gather_data_down(gas_fields, tr_bot)
+
+ use coupler_types_mod, only: coupler_2d_bc_type
+
+ type(coupler_2d_bc_type), intent(inout) :: gas_fields
+ real, dimension(:,:,:), intent(in)      :: tr_bot
+
+ return
+
+ end subroutine atmos_tracer_driver_gather_data_down
+! </SUBROUTINE>
 !######################################################################
 ! given a tracer index, returns true if this tracer has non-zero
 ! sedimentation flux at the bottom of the atmosphere
