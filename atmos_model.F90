@@ -152,6 +152,8 @@ type land_ice_atmos_boundary_type
    real, dimension(:,:),   pointer :: t              =>NULL() ! surface temperature for radiation calculations
    real, dimension(:,:),   pointer :: t_ref          =>null() ! surface air temperature (cjg: PBL depth mods)
    real, dimension(:,:),   pointer :: q_ref          =>null() ! surface air specific humidity (cjg: PBL depth mods)
+   real, dimension(:,:),   pointer :: u_ref          =>null() ! surface air speed zonal
+   real, dimension(:,:),   pointer :: v_ref          =>null() ! surface air speed merid
    real, dimension(:,:),   pointer :: albedo         =>NULL() ! surface albedo for radiation calculations
    real, dimension(:,:),   pointer :: albedo_vis_dir =>NULL()
    real, dimension(:,:),   pointer :: albedo_nir_dir =>NULL()
