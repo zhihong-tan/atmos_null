@@ -455,16 +455,16 @@ Atmos % lon_bnd(:,:) = glon_bnd(is:ie+1, js:je+1)*atan(1.0)/45.0
 Atmos % lat_bnd(:,:) = glat_bnd(is:ie+1, js:je+1)*atan(1.0)/45.0
 
 if(ntile==1) then
-   Atmos%axes(1) = diag_axis_init('lon',glon(:,1),'degrees_E','X','longitude',&
+   Atmos%axes(1) = diag_axis_init('lon',glon(:,1),'degrees_E','X', long_name='longitude',&
         set_name='atmos',domain2 = Atmos%domain)
 
-   Atmos%axes(2) = diag_axis_init('lat',glat(1,:),'degrees_N','Y','latitude',&
+   Atmos%axes(2) = diag_axis_init('lat',glat(1,:),'degrees_N','Y', long_name='latitude',&
         set_name='atmos',domain2 = Atmos%domain)  
 else
-   Atmos%axes(1) = diag_axis_init('lon',(/(real(i),i=1,nlon)/),'degrees_E','X','longitude',&
+   Atmos%axes(1) = diag_axis_init('lon',(/(real(i),i=1,nlon)/),'degrees_E','X', long_name='longitude',&
         set_name='atmos',domain2 = Atmos%domain)
 
-   Atmos%axes(2) = diag_axis_init('lat',(/(real(i),i=1,nlat)/),'degrees_N','Y','latitude',&
+   Atmos%axes(2) = diag_axis_init('lat',(/(real(i),i=1,nlat)/),'degrees_N','Y',long_name='latitude',&
         set_name='atmos',domain2 = Atmos%domain)  
 endif
 
