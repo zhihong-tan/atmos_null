@@ -67,18 +67,17 @@ use mpp_domains_mod,   only : mpp_define_layout, mpp_define_domains
 use mpp_domains_mod,   only : CYCLIC_GLOBAL_DOMAIN, mpp_get_data_domain
 use mpp_domains_mod,   only : mpp_get_compute_domain, mpp_get_tile_id
 use mpp_domains_mod,   only : mpp_get_current_ntile
-use fms_mod,           only : field_exist, read_data, field_size, stdout, set_domain
-use fms_mod,           only : open_namelist_file, check_nml_error, file_exist, close_file
-use fms_io_mod,        only : parse_mask_table
+use fms_mod,           only : stdout
+use fms_mod,           only : check_nml_error
+use fms2_io_mod,       only : file_exists, parse_mask_table
 use time_manager_mod,  only : time_type
 use coupler_types_mod, only : coupler_2d_bc_type
 use diag_manager_mod,  only : diag_axis_init
 use constants_mod,     only : cp_air, hlv
-use mosaic_mod,        only : get_mosaic_ntiles
 use xgrid_mod,         only : grid_box_type
-use grid_mod,          only : get_grid_ntiles, define_cube_mosaic
-use grid_mod,          only : get_grid_size, get_grid_cell_vertices
-use grid_mod,          only : get_grid_cell_centers
+use grid2_mod,         only : get_grid_ntiles, define_cube_mosaic
+use grid2_mod,         only : get_grid_size, get_grid_cell_vertices
+use grid2_mod,         only : get_grid_cell_centers
 use diag_integral_mod, only : diag_integral_init
 use tracer_manager_mod,only : register_tracers
 use field_manager_mod, only : MODEL_LAND
@@ -382,17 +381,8 @@ integer                               :: ntracers, ntprog, ndiag
 integer                               :: namelist_unit, io, ierr, stdoutunit
 
 !--- read namelist
-#ifdef INTERNAL_FILE_NML
-      read (input_nml_file, atmos_model_nml, iostat=io)
-#else
-   namelist_unit = open_namelist_file()
-   ierr=1
-   do while (ierr /= 0)
-     read(namelist_unit, nml=atmos_model_nml, iostat=io, end=20)
-     ierr = check_nml_error (io, 'atmos_model_nml')
-   enddo
-   20 call close_file (namelist_unit)
-#endif
+read (input_nml_file, atmos_model_nml, iostat=io)
+ierr = check_nml_error (io, 'atmos_model_nml')
 
 stdoutunit = stdout()
 !---- set the atmospheric model time ------
@@ -405,7 +395,7 @@ call get_grid_ntiles('ATM',ntile)
 call get_grid_size('ATM',1,nlon,nlat)
 
 
-if(file_exist(mask_table)) then
+if(file_exists(mask_table)) then
    if(ntile > 1) then
       call mpp_error(FATAL, &
         'atmos_model_init: file '//trim(mask_table)//' should not exist when ntile is not 1')
@@ -562,8 +552,6 @@ Atmos % grid % vlat  = 0.0
 call diag_integral_init (Atmos % Time_init, Atmos % Time,  &
                          Atmos % lon_bnd(:,:),  &
                          Atmos % lat_bnd(:,:), area)
-
-call set_domain(Atmos%domain)
 
 end subroutine atmos_model_init
 ! </SUBROUTINE>
