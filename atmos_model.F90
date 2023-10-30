@@ -190,6 +190,9 @@ type land_ice_atmos_boundary_type
    real, dimension(:,:),   pointer :: q_star         =>NULL() ! moisture scale
    real, dimension(:,:),   pointer :: shflx          =>null() ! sensible heat flux
    real, dimension(:,:),   pointer :: lhflx          =>null() ! latent heat flux
+   real, dimension(:,:),   pointer :: wind           =>null() ! surface wind
+   real, dimension(:,:),   pointer :: thv_atm        =>null() ! surface air theta_v
+   real, dimension(:,:),   pointer :: thv_surf       =>null() ! surface theta_v
    real, dimension(:,:),   pointer :: rough_mom      =>NULL() ! surface roughness (used for momentum)
    real, dimension(:,:,:), pointer :: data =>NULL() !collective field for "named" fields above
    real, dimension(:,:),   pointer :: frac_open_sea  =>null() ! non-seaice fraction (%)
@@ -737,6 +740,13 @@ subroutine lnd_ice_atm_bnd_type_chksum(id, timestep, bnd_type)
     write(outunit,100) 'lnd_ice_atm_bnd_type%u_star        ',mpp_chksum(bnd_type%u_star         )
     write(outunit,100) 'lnd_ice_atm_bnd_type%b_star        ',mpp_chksum(bnd_type%b_star         )
     write(outunit,100) 'lnd_ice_atm_bnd_type%q_star        ',mpp_chksum(bnd_type%q_star         )
+#ifndef use_AM3_physics
+    write(outunit,100) 'lnd_ice_atm_bnd_type%shflx         ',mpp_chksum(bnd_type%shflx          )!miz
+    write(outunit,100) 'lnd_ice_atm_bnd_type%lhflx         ',mpp_chksum(bnd_type%lhflx          )!miz
+#endif
+    write(outunit,100) 'lnd_ice_atm_bnd_type%wind          ',mpp_chksum(bnd_type%wind           )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%thv_atm       ',mpp_chksum(bnd_type%thv_atm        )
+    write(outunit,100) 'lnd_ice_atm_bnd_type%thv_surf      ',mpp_chksum(bnd_type%thv_surf       )
     write(outunit,100) 'lnd_ice_atm_bnd_type%rough_mom     ',mpp_chksum(bnd_type%rough_mom      )
 !    write(outunit,100) 'lnd_ice_atm_bnd_type%data          ',mpp_chksum(bnd_type%data           )
 
